@@ -31,6 +31,11 @@ export const api = {
     request(`/orders/${id}/approve`, { method: "POST", body: JSON.stringify(payload) }),
   rejectOrder: (id, payload) =>
     request(`/orders/${id}/reject`, { method: "POST", body: JSON.stringify(payload) }),
+  createUser: (payload) =>
+    request("/users", { method: "POST", body: JSON.stringify(payload) }),
+  updateUser: (id, payload) =>
+    request(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteUser: (id) => request(`/users/${id}`, { method: "DELETE" }),
   consolidated: () => request("/purchasing/consolidated"),
   byDepartment: () => request("/purchasing/by-department"),
   markStatus: (productId, status) =>

@@ -3,6 +3,7 @@ import { api } from "./api/client";
 import CookForm from "./pages/CookForm.jsx";
 import ChefApproval from "./pages/ChefApproval.jsx";
 import PurchaserDashboard from "./pages/PurchaserDashboard.jsx";
+import AdminPanel from "./pages/AdminPanel.jsx";
 
 // NOTE: в проде пользователь определяется по Telegram initData (WebApp.initDataUnsafe.user.id),
 // сверенному на бэкенде с полем telegram_id. Здесь для разработки — простой выбор пользователя.
@@ -101,11 +102,12 @@ export default function App() {
         {currentUser.role === "cook" && <CookForm user={currentUser} />}
         {currentUser.role === "chef" && <ChefApproval user={currentUser} />}
         {currentUser.role === "purchaser" && <PurchaserDashboard user={currentUser} />}
+        {currentUser.role === "admin" && <AdminPanel />}
       </main>
     </div>
   );
 }
 
 function roleLabel(role) {
-  return { cook: "Повар", chef: "Шеф / су-шеф", purchaser: "Закупщик" }[role] || role;
+  return { cook: "Повар", chef: "Шеф / су-шеф", purchaser: "Закупщик", admin: "Админ" }[role] || role;
 }

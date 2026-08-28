@@ -21,6 +21,20 @@ class UserOut(BaseModel):
         from_attributes = True
 
 
+class UserCreate(BaseModel):
+    full_name: str
+    telegram_username: str
+    role: RoleEnum
+    department_id: Optional[int] = None
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    telegram_username: Optional[str] = None
+    role: Optional[RoleEnum] = None
+    department_id: Optional[int] = None
+
+
 class CategoryOut(BaseModel):
     id: int
     name: str

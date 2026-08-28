@@ -11,6 +11,7 @@ class RoleEnum(str, enum.Enum):
     cook = "cook"
     chef = "chef"          # шеф / су-шеф — согласующий, видит все цеха
     purchaser = "purchaser"
+    admin = "admin"         # управляет пользователями и ролями
 
 
 class OrderStatus(str, enum.Enum):

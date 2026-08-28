@@ -8,5 +8,6 @@
   {"full_name": "Тошева Малика", "telegram_username": "malika_tosheva", "role": "cook", "department": "Бар"},
   {"full_name": "Мирзаев Аброр", "telegram_username": "abror_mirzaev", "role": "chef", "department": null},
   {"full_name": "Насриддинова Зарина", "telegram_username": "zarina_nasriddinova", "role": "chef", "department": null},
-  {"full_name": "Каюмов Отабек", "telegram_username": "otabek_kayumov", "role": "purchaser", "department": null}
+  {"full_name": "Каюмов Отабек", "telegram_username": "otabek_kayumov", "role": "purchaser", "department": null},
+  {"full_name": "Админ (замени на себя)", "telegram_username": "admin_placeholder", "role": "admin", "department": null}
 ]
