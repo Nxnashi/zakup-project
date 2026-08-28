@@ -26,6 +26,13 @@ class ItemPurchaseStatus(str, enum.Enum):
     received = "received"
 
 
+# native_enum=False хранит значения как обычный VARCHAR, а не как жёсткий
+# enum-тип в самой Postgres. Так добавлять новые роли/статусы можно просто
+# правкой Python-кода, без ALTER TYPE на проде.
+def PyEnum(enum_cls):
+    return Enum(enum_cls, native_enum=False, validate_strings=True)
+
+
 class Department(Base):
     __tablename__ = "departments"
     id = Column(Integer, primary_key=True)
@@ -41,7 +48,7 @@ class User(Base):
     full_name = Column(String, nullable=False)
     telegram_username = Column(String, unique=True, nullable=False)
     telegram_id = Column(String, unique=True, nullable=True)  # заполнится при первом входе через бота
-    role = Column(Enum(RoleEnum), nullable=False)
+    role = Column(PyEnum(RoleEnum), nullable=False)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
 
     department = relationship("Department", back_populates="users")
@@ -71,7 +78,7 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    status = Column(Enum(OrderStatus), default=OrderStatus.pending, nullable=False)
+    status = Column(PyEnum(OrderStatus), default=OrderStatus.pending, nullable=False)
     urgent = Column(Integer, default=0)  # 0/1 срочность
     comment = Column(Text, nullable=True)
     decision_comment = Column(Text, nullable=True)
@@ -92,7 +99,7 @@ class OrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     qty = Column(Float, nullable=False)
     comment = Column(Text, nullable=True)
-    purchase_status = Column(Enum(ItemPurchaseStatus), default=ItemPurchaseStatus.awaiting, nullable=False)
+    purchase_status = Column(PyEnum(ItemPurchaseStatus), default=ItemPurchaseStatus.awaiting, nullable=False)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")

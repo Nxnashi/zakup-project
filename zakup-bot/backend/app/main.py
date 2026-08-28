@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine
 from .routers import catalog, orders, purchasing
 from . import seed as seed_module
+from . import migrate as migrate_module
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +24,7 @@ app.include_router(purchasing.router, prefix="/purchasing", tags=["purchasing"])
 
 @app.on_event("startup")
 def on_startup():
+    migrate_module.migrate_enum_columns_to_varchar()
     seed_module.seed()
 
 
