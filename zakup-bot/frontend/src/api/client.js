@@ -37,6 +37,7 @@ export const api = {
     request(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteUser: (id) => request(`/users/${id}`, { method: "DELETE" }),
   consolidated: () => request("/purchasing/consolidated"),
+  exportExcelUrl: () => `${API_BASE}/purchasing/export-excel`,
   byDepartment: () => request("/purchasing/by-department"),
   markStatus: (productId, status) =>
     request("/purchasing/mark-status", {

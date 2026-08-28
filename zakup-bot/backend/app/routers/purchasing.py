@@ -1,12 +1,17 @@
 from collections import defaultdict
+from io import BytesIO
+from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from .. import models, schemas
 from ..database import get_db
 
 router = APIRouter()
+
+STATUS_LABELS = {"awaiting": "Ожидает", "ordered": "Заказано", "received": "Получено"}
 
 
 def _approved_items_query(db: Session):
@@ -21,8 +26,7 @@ def _approved_items_query(db: Session):
     )
 
 
-@router.get("/consolidated", response_model=List[schemas.ConsolidatedLine])
-def consolidated(db: Session = Depends(get_db)):
+def _consolidated_lines(db: Session):
     items = _approved_items_query(db).all()
     grouped = defaultdict(lambda: {"total_qty": 0.0, "by_department": defaultdict(float),
                                     "item_ids": [], "statuses": set(), "product": None})
@@ -50,8 +54,13 @@ def consolidated(db: Session = Depends(get_db)):
             purchase_status=overall,
             item_ids=g["item_ids"],
         ))
-    result.sort(key=lambda x: x.product.name)
+    result.sort(key=lambda x: (x.product.category.name, x.product.name))
     return result
+
+
+@router.get("/consolidated", response_model=List[schemas.ConsolidatedLine])
+def consolidated(db: Session = Depends(get_db)):
+    return _consolidated_lines(db)
 
 
 @router.get("/by-department", response_model=List[schemas.OrderOut])
@@ -62,6 +71,49 @@ def by_department(db: Session = Depends(get_db)):
         .filter(models.Order.status == models.OrderStatus.approved)
         .order_by(models.Order.department_id, models.Order.created_at.desc())
         .all()
+    )
+
+
+@router.get("/export-excel")
+def export_excel(db: Session = Depends(get_db)):
+    import openpyxl
+    from openpyxl.styles import Font
+
+    lines = _consolidated_lines(db)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Закупка"
+
+    headers = ["Категория", "Поставщик", "Наименование", "Кол-во", "Ед.изм", "По цехам", "Статус"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    for line in lines:
+        by_dept = ", ".join(f"{dep} {qty}" for dep, qty in line.by_department.items())
+        ws.append([
+            line.product.category.name,
+            line.product.default_supplier or "",
+            line.product.name,
+            line.total_qty,
+            line.product.unit or "",
+            by_dept,
+            STATUS_LABELS.get(line.purchase_status, line.purchase_status),
+        ])
+
+    widths = [20, 14, 34, 8, 8, 30, 12]
+    for col, w in zip("ABCDEFG", widths):
+        ws.column_dimensions[col].width = w
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f"zakup-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

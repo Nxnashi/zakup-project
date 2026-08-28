@@ -38,6 +38,22 @@ export default function PurchaserDashboard() {
 
   return (
     <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <a
+          href={api.exportExcelUrl()}
+          style={{
+            fontSize: 13,
+            padding: "8px 12px",
+            border: "1px solid var(--border)",
+            background: "var(--surface)",
+            color: "var(--text)",
+            textDecoration: "none",
+          }}
+        >
+          Скачать Excel
+        </a>
+      </div>
+
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         <TabButton active={tab === "consolidated"} onClick={() => setTab("consolidated")}>
           Консолидированно
