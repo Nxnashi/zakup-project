@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api/client";
+import SegmentedTabs from "../components/SegmentedTabs.jsx";
 
 const purchaseStatusMeta = {
-  awaiting: { label: "Ожидает", bg: "var(--warning-bg)", fg: "var(--warning)" },
-  ordered: { label: "Заказано", bg: "var(--accent-bg)", fg: "var(--accent)" },
-  received: { label: "Получено", bg: "var(--success-bg)", fg: "var(--success)" },
+  awaiting: { label: "Ожидает", cls: "badge-warning" },
+  ordered: { label: "Заказано", cls: "badge-neutral" },
+  received: { label: "Получено", cls: "badge-success" },
 };
 
 export default function PurchaserDashboard() {
@@ -29,7 +30,15 @@ export default function PurchaserDashboard() {
     load();
   }
 
-  if (loading) return <p style={{ color: "var(--text-secondary)" }}>Загрузка…</p>;
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="skeleton" style={{ height: 40, marginBottom: 6 }} />
+        <div className="skeleton" style={{ height: 76 }} />
+        <div className="skeleton" style={{ height: 76 }} />
+      </div>
+    );
+  }
 
   const grouped = byDept.reduce((acc, o) => {
     (acc[o.department.name] = acc[o.department.name] || []).push(o);
@@ -37,127 +46,106 @@ export default function PurchaserDashboard() {
   }, {});
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-        <a
-          href={api.exportExcelUrl()}
-          style={{
-            fontSize: 13,
-            padding: "8px 12px",
-            border: "1px solid var(--border)",
-            background: "var(--surface)",
-            color: "var(--text)",
-            textDecoration: "none",
-          }}
-        >
-          Скачать Excel
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+        <a href={api.exportExcelUrl()} className="btn" style={{ fontSize: 13, padding: "9px 13px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          ⬇ Скачать Excel
         </a>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <TabButton active={tab === "consolidated"} onClick={() => setTab("consolidated")}>
-          Консолидированно
-        </TabButton>
-        <TabButton active={tab === "byDept"} onClick={() => setTab("byDept")}>
-          По цехам
-        </TabButton>
-      </div>
+      <SegmentedTabs
+        tabs={[
+          { value: "consolidated", label: "Консолидированно" },
+          { value: "byDept", label: "По цехам" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
-      {tab === "consolidated" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {consolidated.length === 0 && (
-            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Утверждённых заявок нет.</p>
-          )}
-          {consolidated.map((line) => (
-            <div key={line.product.id} style={{ border: "1px solid var(--border)", background: "var(--surface)", padding: "10px 12px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>{line.product.name}</span>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>
-                  {line.total_qty} {line.product.unit}
-                </span>
+      <div style={{ marginTop: 16 }}>
+        {tab === "consolidated" && (
+          <div key="consolidated" className="fade-in stagger-list" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {consolidated.length === 0 && (
+              <div className="card" style={{ padding: "20px 16px", textAlign: "center" }}>
+                <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: 0 }}>Утверждённых заявок пока нет.</p>
               </div>
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 8px" }}>
-                {Object.entries(line.by_department).map(([dep, qty]) => `${dep} ${qty}`).join(" · ")}
-                {line.product.default_supplier ? ` · Пост.: ${line.product.default_supplier}` : ""}
-              </p>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <StatusPill status={line.purchase_status} />
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button
-                    onClick={() => markStatus(line.product.id, "ordered")}
-                    disabled={line.purchase_status !== "awaiting"}
-                    style={{ fontSize: 12, padding: "6px 10px", border: "1px solid var(--border)", background: "var(--surface)" }}
-                  >
-                    Заказано
-                  </button>
-                  <button
-                    onClick={() => markStatus(line.product.id, "received")}
-                    disabled={line.purchase_status === "received"}
-                    style={{ fontSize: 12, padding: "6px 10px", border: "1px solid var(--border)", background: "var(--surface)" }}
-                  >
-                    Получено
-                  </button>
+            )}
+            {consolidated.map((line) => {
+              const meta = purchaseStatusMeta[line.purchase_status] || purchaseStatusMeta.awaiting;
+              return (
+                <div key={line.product.id} className="card" style={{ padding: "11px 13px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700 }}>{line.product.name}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700 }}>
+                      {line.total_qty} {line.product.unit}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 10px" }}>
+                    {Object.entries(line.by_department).map(([dep, qty]) => `${dep} ${qty}`).join(" · ")}
+                    {line.product.default_supplier ? ` · Пост.: ${line.product.default_supplier}` : ""}
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span className={`badge ${meta.cls}`}>
+                      <span className="badge-dot" />
+                      {meta.label}
+                    </span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => markStatus(line.product.id, "ordered")}
+                        disabled={line.purchase_status !== "awaiting"}
+                        className="btn"
+                        style={{ fontSize: 12, padding: "7px 11px" }}
+                      >
+                        Заказано
+                      </button>
+                      <button
+                        onClick={() => markStatus(line.product.id, "received")}
+                        disabled={line.purchase_status === "received"}
+                        className="btn"
+                        style={{ fontSize: 12, padding: "7px 11px" }}
+                      >
+                        Получено
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "byDept" && (
+          <div key="byDept" className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {Object.keys(grouped).length === 0 && (
+              <div className="card" style={{ padding: "20px 16px", textAlign: "center" }}>
+                <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: 0 }}>Утверждённых заявок пока нет.</p>
+              </div>
+            )}
+            {Object.entries(grouped).map(([dept, orders]) => (
+              <div key={dept}>
+                <p style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {dept}
+                </p>
+                <div className="stagger-list" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {orders.map((o) => (
+                    <div key={o.id} className="card" style={{ padding: "9px 13px" }}>
+                      <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 4px" }}>
+                        {o.author.full_name} · {new Date(o.created_at).toLocaleDateString("ru-RU")}
+                      </p>
+                      {o.items.map((i) => (
+                        <div key={i.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                          <span>{i.product.name}</span>
+                          <span style={{ fontWeight: 600 }}>{i.qty} {i.product.unit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === "byDept" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {Object.keys(grouped).length === 0 && (
-            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Утверждённых заявок нет.</p>
-          )}
-          {Object.entries(grouped).map(([dept, orders]) => (
-            <div key={dept}>
-              <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{dept}</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {orders.map((o) => (
-                  <div key={o.id} style={{ border: "1px solid var(--border)", background: "var(--surface)", padding: "8px 12px" }}>
-                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 4px" }}>
-                      {o.author.full_name} · {new Date(o.created_at).toLocaleDateString("ru-RU")}
-                    </p>
-                    {o.items.map((i) => (
-                      <div key={i.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                        <span>{i.product.name}</span>
-                        <span>{i.qty} {i.product.unit}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
-  );
-}
-
-function TabButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: 10,
-        border: "1px solid var(--border)",
-        background: active ? "var(--accent)" : "var(--surface)",
-        color: active ? "#fff" : "var(--text)",
-        fontSize: 14,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function StatusPill({ status }) {
-  const meta = purchaseStatusMeta[status] || purchaseStatusMeta.awaiting;
-  return (
-    <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 6, background: meta.bg, color: meta.fg }}>
-      {meta.label}
-    </span>
   );
 }

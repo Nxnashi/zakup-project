@@ -1,23 +1,34 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import SegmentedTabs from "../components/SegmentedTabs.jsx";
 
-const statusMeta = {
-  pending: { label: "На согласовании", bg: "var(--warning-bg)", fg: "var(--warning)" },
-  approved: { label: "Утверждено", bg: "var(--success-bg)", fg: "var(--success)" },
-  rejected: { label: "Отклонено", bg: "var(--danger-bg)", fg: "var(--danger)" },
-};
+export function StatusBadge({ status }) {
+  const meta = {
+    pending: { label: "На согласовании", cls: "badge-warning" },
+    approved: { label: "Утверждено", cls: "badge-success" },
+    rejected: { label: "Отклонено", cls: "badge-danger" },
+  }[status] || { label: status, cls: "badge-neutral" };
+  return (
+    <span className={`badge ${meta.cls}`}>
+      <span className="badge-dot" />
+      {meta.label}
+    </span>
+  );
+}
 
 export default function CookForm({ user }) {
-  const [tab, setTab] = useState("new"); // new | history
+  const [tab, setTab] = useState("new");
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
-  const [cart, setCart] = useState({}); // product_id -> {product, qty, comment}
+  const [cart, setCart] = useState({});
   const [urgent, setUrgent] = useState(false);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [justAdded, setJustAdded] = useState(null);
 
   useEffect(() => {
     api.categories().then((cats) => {
@@ -34,7 +45,11 @@ export default function CookForm({ user }) {
 
   useEffect(() => {
     if (tab === "history") {
-      api.orders({ author_id: user.id }).then(setHistory);
+      setHistoryLoading(true);
+      api.orders({ author_id: user.id }).then((data) => {
+        setHistory(data);
+        setHistoryLoading(false);
+      });
     }
   }, [tab, user.id]);
 
@@ -45,6 +60,8 @@ export default function CookForm({ user }) {
       ...prev,
       [product.id]: prev[product.id] || { product, qty: 1, comment: "" },
     }));
+    setJustAdded(product.id);
+    setTimeout(() => setJustAdded(null), 380);
   }
 
   function updateQty(productId, qty) {
@@ -87,163 +104,143 @@ export default function CookForm({ user }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <TabButton active={tab === "new"} onClick={() => setTab("new")}>Новая заявка</TabButton>
-        <TabButton active={tab === "history"} onClick={() => setTab("history")}>Мои заявки</TabButton>
-      </div>
+      <SegmentedTabs
+        tabs={[
+          { value: "new", label: "Новая заявка" },
+          { value: "history", label: "Мои заявки" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
-      {tab === "new" && (
-        <>
-          <input
-            placeholder="Поиск позиции…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: "100%", padding: 10, border: "1px solid var(--border)", marginBottom: 10 }}
-          />
+      <div style={{ marginTop: 16 }}>
+        {tab === "new" && (
+          <div key="new" className="fade-in">
+            <input
+              placeholder="Поиск позиции…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input"
+              style={{ marginBottom: 10 }}
+            />
 
-          {!search && (
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 10, paddingBottom: 4 }}>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setActiveCategory(c.id)}
+            {!search && (
+              <div className="chip-row" style={{ marginBottom: 12 }}>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setActiveCategory(c.id)}
+                    className={`chip ${activeCategory === c.id ? "active" : ""}`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="scroll-area" style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
+              {products.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => addToCart(p)}
+                  className="card card-interactive"
                   style={{
-                    flexShrink: 0,
-                    padding: "6px 12px",
-                    fontSize: 13,
-                    border: "1px solid var(--border)",
-                    background: activeCategory === c.id ? "var(--accent)" : "var(--surface)",
-                    color: activeCategory === c.id ? "#fff" : "var(--text)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "10px 13px",
+                    background: cart[p.id] ? "var(--accent-soft)" : "var(--surface)",
+                    borderColor: cart[p.id] ? "var(--accent-soft-strong)" : "var(--border)",
+                    animation: justAdded === p.id ? "pop 320ms var(--ease-snap)" : "none",
                   }}
                 >
-                  {c.name}
-                </button>
+                  <span style={{ fontSize: 14 }}>{p.name}</span>
+                  <span style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 600 }}>{p.unit}</span>
+                </div>
               ))}
+              {products.length === 0 && (
+                <p style={{ color: "var(--ink-soft)", fontSize: 13, padding: "8px 2px" }}>Ничего не найдено.</p>
+              )}
             </div>
-          )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
-            {products.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => addToCart(p)}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "8px 12px",
-                  border: "1px solid var(--border)",
-                  background: cart[p.id] ? "var(--accent-bg)" : "var(--surface)",
-                }}
-              >
-                <span style={{ fontSize: 14 }}>{p.name}</span>
-                <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{p.unit}</span>
+            {cartItems.length > 0 && (
+              <div className="scale-in" style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>В заявке ({cartItems.length})</p>
+                <div className="stagger-list" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {cartItems.map(({ product, qty }) => (
+                    <div key={product.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ flex: 1, fontSize: 14 }}>{product.name}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={qty}
+                        onChange={(e) => updateQty(product.id, e.target.value)}
+                        className="input"
+                        style={{ width: 64, padding: "7px 8px", textAlign: "center" }}
+                      />
+                      <span style={{ fontSize: 12, color: "var(--ink-soft)", width: 26 }}>{product.unit}</span>
+                      <button onClick={() => removeFromCart(product.id)} className="btn btn-ghost" style={{ padding: "6px 8px", color: "var(--danger)" }}>
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, marginTop: 14, fontWeight: 500 }}>
+                  <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--accent)" }} />
+                  Срочная заявка
+                </label>
+
+                <textarea
+                  placeholder="Комментарий (необязательно)"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="input"
+                  style={{ marginTop: 10, minHeight: 54, resize: "vertical" }}
+                />
+
+                <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ width: "100%", marginTop: 14, padding: 13 }}>
+                  {submitting ? "Отправка…" : "Отправить на согласование"}
+                </button>
               </div>
-            ))}
+            )}
           </div>
+        )}
 
-          {cartItems.length > 0 && (
-            <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-              <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>В заявке ({cartItems.length})</p>
+        {tab === "history" && (
+          <div key="history" className="fade-in">
+            {historyLoading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {cartItems.map(({ product, qty }) => (
-                  <div key={product.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ flex: 1, fontSize: 14 }}>{product.name}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={qty}
-                      onChange={(e) => updateQty(product.id, e.target.value)}
-                      style={{ width: 64, padding: 6, border: "1px solid var(--border)" }}
-                    />
-                    <span style={{ fontSize: 12, color: "var(--text-secondary)", width: 28 }}>{product.unit}</span>
-                    <button onClick={() => removeFromCart(product.id)} style={{ border: "none", background: "none", color: "var(--danger)" }}>✕</button>
+                <div className="skeleton" style={{ height: 66 }} />
+                <div className="skeleton" style={{ height: 66 }} />
+              </div>
+            ) : (
+              <div className="stagger-list" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {history.length === 0 && <p style={{ color: "var(--ink-soft)", fontSize: 14 }}>Заявок пока нет.</p>}
+                {history.map((o) => (
+                  <div key={o.id} className="card" style={{ padding: "11px 13px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
+                        {new Date(o.created_at).toLocaleString("ru-RU")}
+                      </span>
+                      <StatusBadge status={o.status} />
+                    </div>
+                    <p style={{ fontSize: 14, margin: 0 }}>
+                      {o.items.map((i) => i.product.name).join(", ")}
+                    </p>
+                    {o.decision_comment && (
+                      <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 6 }}>
+                        Комментарий: {o.decision_comment}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
-
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, marginTop: 12 }}>
-                <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
-                Срочная заявка
-              </label>
-
-              <textarea
-                placeholder="Комментарий (необязательно)"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                style={{ width: "100%", marginTop: 8, padding: 8, border: "1px solid var(--border)", minHeight: 50 }}
-              />
-
-              <button
-                onClick={submit}
-                disabled={submitting}
-                style={{
-                  width: "100%",
-                  marginTop: 12,
-                  padding: 12,
-                  background: "var(--accent)",
-                  color: "#fff",
-                  border: "none",
-                  fontWeight: 500,
-                }}
-              >
-                {submitting ? "Отправка…" : "Отправить на согласование"}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {tab === "history" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {history.length === 0 && <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Заявок пока нет.</p>}
-          {history.map((o) => (
-            <div key={o.id} style={{ border: "1px solid var(--border)", padding: "10px 12px", background: "var(--surface)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  {new Date(o.created_at).toLocaleString("ru-RU")}
-                </span>
-                <StatusBadge status={o.status} />
-              </div>
-              <p style={{ fontSize: 14, margin: 0 }}>
-                {o.items.map((i) => i.product.name).join(", ")}
-              </p>
-              {o.decision_comment && (
-                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>
-                  Комментарий: {o.decision_comment}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
     </div>
-  );
-}
-
-function TabButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: 10,
-        border: "1px solid var(--border)",
-        background: active ? "var(--accent)" : "var(--surface)",
-        color: active ? "#fff" : "var(--text)",
-        fontSize: 14,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-export function StatusBadge({ status }) {
-  const meta = statusMeta[status] || statusMeta.pending;
-  return (
-    <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 6, background: meta.bg, color: meta.fg }}>
-      {meta.label}
-    </span>
   );
 }

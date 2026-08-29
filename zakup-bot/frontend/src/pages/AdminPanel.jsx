@@ -66,65 +66,64 @@ export default function AdminPanel() {
     }
   }
 
-  if (loading) return <p style={{ color: "var(--text-secondary)" }}>Загрузка…</p>;
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="skeleton" style={{ height: 44, marginBottom: 6 }} />
+        <div className="skeleton" style={{ height: 54 }} />
+        <div className="skeleton" style={{ height: 54 }} />
+        <div className="skeleton" style={{ height: 54 }} />
+      </div>
+    );
+  }
 
   return (
-    <div>
+    <div className="fade-in">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Пользователей: {users.length}</p>
-        <button
-          onClick={() => setShowAddForm((v) => !v)}
-          style={{ padding: "8px 14px", background: "var(--accent)", color: "#fff", border: "none", fontSize: 13 }}
-        >
+        <p style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+          Пользователей: <strong style={{ color: "var(--ink)" }}>{users.length}</strong>
+        </p>
+        <button onClick={() => setShowAddForm((v) => !v)} className={showAddForm ? "btn" : "btn btn-primary"} style={{ fontSize: 13, padding: "9px 14px" }}>
           {showAddForm ? "Отмена" : "+ Добавить"}
         </button>
       </div>
 
       {showAddForm && (
-        <div style={{ border: "1px solid var(--border)", background: "var(--surface)", padding: 12, marginBottom: 14 }}>
+        <div className="card scale-in" style={{ padding: 14, marginBottom: 14 }}>
           <input
             placeholder="Имя Фамилия"
             value={form.full_name}
             onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-            style={{ width: "100%", padding: 8, border: "1px solid var(--border)", marginBottom: 8 }}
+            className="input"
+            style={{ marginBottom: 8 }}
           />
           <input
             placeholder="username (без @)"
             value={form.telegram_username}
             onChange={(e) => setForm({ ...form, telegram_username: e.target.value })}
-            style={{ width: "100%", padding: 8, border: "1px solid var(--border)", marginBottom: 8 }}
+            className="input"
+            style={{ marginBottom: 8 }}
           />
-          <select
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-            style={{ width: "100%", padding: 8, border: "1px solid var(--border)", marginBottom: 8 }}
-          >
+          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input" style={{ marginBottom: 8 }}>
             {Object.entries(roleLabels).map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
             ))}
           </select>
           {form.role === "cook" && (
-            <select
-              value={form.department_id}
-              onChange={(e) => setForm({ ...form, department_id: e.target.value })}
-              style={{ width: "100%", padding: 8, border: "1px solid var(--border)", marginBottom: 8 }}
-            >
+            <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} className="input" style={{ marginBottom: 8 }}>
               <option value="">Выбери цех</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
           )}
-          <button
-            onClick={submitNew}
-            style={{ width: "100%", padding: 10, background: "var(--accent)", color: "#fff", border: "none" }}
-          >
+          <button onClick={submitNew} className="btn btn-primary" style={{ width: "100%", padding: 12 }}>
             Сохранить
           </button>
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="stagger-list" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {users.map((u) => (
           <UserRow
             key={u.id}
@@ -148,19 +147,19 @@ function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelet
 
   if (!editing) {
     return (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--border)", background: "var(--surface)", padding: "8px 12px" }}>
+      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 13px" }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 500 }}>{user.full_name}</div>
-          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{user.full_name}</div>
+          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
             @{user.telegram_username} · {roleLabels[user.role]}
             {user.department ? ` · ${user.department.name}` : ""}
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={onEdit} style={{ fontSize: 12, padding: "6px 10px", border: "1px solid var(--border)", background: "var(--surface)" }}>
+          <button onClick={onEdit} className="btn" style={{ fontSize: 12, padding: "7px 11px" }}>
             Изменить
           </button>
-          <button onClick={onDelete} style={{ fontSize: 12, padding: "6px 10px", border: "1px solid var(--border)", background: "var(--danger-bg)", color: "var(--danger)" }}>
+          <button onClick={onDelete} className="btn btn-danger" style={{ fontSize: 12, padding: "7px 11px" }}>
             Убрать
           </button>
         </div>
@@ -169,15 +168,15 @@ function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelet
   }
 
   return (
-    <div style={{ border: "1px solid var(--accent)", background: "var(--surface)", padding: 12 }}>
-      <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 8 }}>{user.full_name}</p>
-      <select value={role} onChange={(e) => setRole(e.target.value)} style={{ width: "100%", padding: 8, border: "1px solid var(--border)", marginBottom: 8 }}>
+    <div className="card scale-in" style={{ padding: 14, borderColor: "var(--accent)" }}>
+      <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>{user.full_name}</p>
+      <select value={role} onChange={(e) => setRole(e.target.value)} className="input" style={{ marginBottom: 8 }}>
         {Object.entries(roleLabels).map(([val, label]) => (
           <option key={val} value={val}>{label}</option>
         ))}
       </select>
       {role === "cook" && (
-        <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} style={{ width: "100%", padding: 8, border: "1px solid var(--border)", marginBottom: 8 }}>
+        <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="input" style={{ marginBottom: 8 }}>
           <option value="">Выбери цех</option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
@@ -185,12 +184,13 @@ function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelet
         </select>
       )}
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={onCancel} style={{ flex: 1, padding: 8, border: "1px solid var(--border)", background: "var(--surface)" }}>
+        <button onClick={onCancel} className="btn" style={{ flex: 1, padding: 9 }}>
           Отмена
         </button>
         <button
           onClick={() => onSave({ role, department_id: role === "cook" && departmentId ? Number(departmentId) : null })}
-          style={{ flex: 1, padding: 8, background: "var(--accent)", color: "#fff", border: "none" }}
+          className="btn btn-primary"
+          style={{ flex: 1, padding: 9 }}
         >
           Сохранить
         </button>

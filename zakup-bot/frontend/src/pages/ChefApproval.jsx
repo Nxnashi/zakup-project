@@ -6,7 +6,8 @@ export default function ChefApproval({ user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
-  const [editedQty, setEditedQty] = useState({}); // orderId -> {productId: qty}
+  const [removingId, setRemovingId] = useState(null);
+  const [editedQty, setEditedQty] = useState({});
 
   function load() {
     setLoading(true);
@@ -36,10 +37,9 @@ export default function ChefApproval({ user }) {
       : null;
     try {
       await api.approveOrder(order.id, { decided_by_id: user.id, items });
-      load();
+      dismiss(order.id);
     } catch (e) {
       alert("Ошибка: " + e.message);
-    } finally {
       setBusyId(null);
     }
   }
@@ -49,82 +49,104 @@ export default function ChefApproval({ user }) {
     setBusyId(order.id);
     try {
       await api.rejectOrder(order.id, { decided_by_id: user.id, decision_comment: reason });
-      load();
+      dismiss(order.id);
     } catch (e) {
       alert("Ошибка: " + e.message);
-    } finally {
       setBusyId(null);
     }
   }
 
-  if (loading) return <p style={{ color: "var(--text-secondary)" }}>Загрузка…</p>;
+  function dismiss(orderId) {
+    setRemovingId(orderId);
+    setTimeout(() => {
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setBusyId(null);
+      setRemovingId(null);
+    }, 220);
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="skeleton" style={{ height: 130 }} />
+        <div className="skeleton" style={{ height: 130 }} />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-        Заявок на согласовании: {orders.length}
+    <div className="fade-in">
+      <p style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 12 }}>
+        Заявок на согласовании: <strong style={{ color: "var(--ink)" }}>{orders.length}</strong>
       </p>
       {orders.length === 0 && (
-        <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Новых заявок нет.</p>
-      )}
-      {orders.map((o) => (
-        <div key={o.id} style={{ border: "1px solid var(--border)", background: "var(--surface)", padding: "12px 14px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontWeight: 500, fontSize: 14 }}>
-              {o.department.name} · {o.author.full_name}
-            </span>
-            {o.urgent ? (
-              <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 6, background: "var(--danger-bg)", color: "var(--danger)" }}>
-                Срочно
-              </span>
-            ) : (
-              <StatusBadge status={o.status} />
-            )}
-          </div>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
-            {new Date(o.created_at).toLocaleString("ru-RU")}
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
-            {o.items.map((i) => (
-              <div key={i.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ flex: 1, fontSize: 14 }}>{i.product.name}</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  defaultValue={i.qty}
-                  onChange={(e) => setQty(o.id, i.product.id, e.target.value)}
-                  style={{ width: 60, padding: 5, border: "1px solid var(--border)" }}
-                />
-                <span style={{ fontSize: 12, color: "var(--text-secondary)", width: 24 }}>{i.product.unit}</span>
-              </div>
-            ))}
-          </div>
-          {o.comment && (
-            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>
-              Комментарий повара: {o.comment}
-            </p>
-          )}
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => reject(o)}
-              disabled={busyId === o.id}
-              style={{ flex: 1, padding: 10, background: "var(--danger-bg)", color: "var(--danger)", border: "none" }}
-            >
-              Отклонить
-            </button>
-            <button
-              onClick={() => approve(o)}
-              disabled={busyId === o.id}
-              style={{ flex: 1, padding: 10, background: "var(--accent)", color: "#fff", border: "none" }}
-            >
-              Утвердить
-            </button>
-          </div>
+        <div className="card" style={{ padding: "20px 16px", textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: 0 }}>Новых заявок нет — можно выдохнуть.</p>
         </div>
-      ))}
+      )}
+      <div className="stagger-list" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {orders.map((o) => (
+          <div
+            key={o.id}
+            className="card"
+            style={{
+              padding: "13px 15px",
+              transition: "opacity 220ms ease, transform 220ms ease",
+              opacity: removingId === o.id ? 0 : 1,
+              transform: removingId === o.id ? "translateX(24px) scale(0.98)" : "none",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontWeight: 700, fontSize: 14.5 }}>
+                {o.department.name} · {o.author.full_name}
+              </span>
+              {o.urgent ? (
+                <span className="badge badge-danger">
+                  <span className="badge-dot pulse-dot" />
+                  Срочно
+                </span>
+              ) : (
+                <StatusBadge status={o.status} />
+              )}
+            </div>
+            <p style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 10 }}>
+              {new Date(o.created_at).toLocaleString("ru-RU")}
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+              {o.items.map((i) => (
+                <div key={i.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ flex: 1, fontSize: 14 }}>{i.product.name}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    defaultValue={i.qty}
+                    onChange={(e) => setQty(o.id, i.product.id, e.target.value)}
+                    className="input"
+                    style={{ width: 60, padding: "6px 7px", textAlign: "center" }}
+                  />
+                  <span style={{ fontSize: 12, color: "var(--ink-soft)", width: 24 }}>{i.product.unit}</span>
+                </div>
+              ))}
+            </div>
+            {o.comment && (
+              <p style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 10, background: "var(--surface-2)", padding: "6px 9px", borderRadius: "var(--radius-sm)" }}>
+                💬 {o.comment}
+              </p>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => reject(o)} disabled={busyId === o.id} className="btn btn-danger" style={{ flex: 1, padding: 11 }}>
+                Отклонить
+              </button>
+              <button onClick={() => approve(o)} disabled={busyId === o.id} className="btn btn-primary" style={{ flex: 1, padding: 11 }}>
+                Утвердить
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
