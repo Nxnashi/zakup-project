@@ -1,8 +1,56 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api/client";
-import { StatusBadge } from "./CookForm.jsx";
+import StatusBadge from "../components/StatusBadge.jsx";
+import SegmentedTabs from "../components/SegmentedTabs.jsx";
+import OrderComposer from "../components/OrderComposer.jsx";
+import OrderHistoryList from "../components/OrderHistoryList.jsx";
 
 export default function ChefApproval({ user }) {
+  const [tab, setTab] = useState("queue");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  return (
+    <div>
+      <SegmentedTabs
+        tabs={[
+          { value: "queue", label: "Согласование" },
+          { value: "new", label: "Моя заявка" },
+          { value: "history", label: "Мои заявки" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+
+      <div style={{ marginTop: 16 }}>
+        {tab === "queue" && (
+          <div key="queue" className="fade-in">
+            <ApprovalQueue user={user} />
+          </div>
+        )}
+
+        {tab === "new" && (
+          <div key="new" className="fade-in">
+            <OrderComposer
+              user={user}
+              onSubmitted={() => {
+                setRefreshKey((k) => k + 1);
+                setTab("history");
+              }}
+            />
+          </div>
+        )}
+
+        {tab === "history" && (
+          <div key="history" className="fade-in">
+            <OrderHistoryList user={user} refreshKey={refreshKey} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ApprovalQueue({ user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -75,7 +123,7 @@ export default function ChefApproval({ user }) {
   }
 
   return (
-    <div className="fade-in">
+    <div>
       <p style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 12 }}>
         Заявок на согласовании: <strong style={{ color: "var(--ink)" }}>{orders.length}</strong>
       </p>
