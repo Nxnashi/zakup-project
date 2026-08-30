@@ -1,5 +1,6 @@
 import json
 import os
+from sqlalchemy.orm import joinedload
 from .database import SessionLocal, engine, Base
 from . import models
 
@@ -69,6 +70,32 @@ def seed():
         db.commit()
         if added:
             print(f"Added {added} new user(s) from users.json.")
+
+        # Видимость ТМЦ по цехам: категория «Бар» видна только Бару, все
+        # остальные категории — общей кухне (Горячий + Холодный). Линкуем
+        # только те товары, у которых пока нет ни одной привязки, так что
+        # ручные правки через админку (в т.ч. дубли для другого цеха) не
+        # затираются при каждом рестарте.
+        depts = {d.name: d for d in db.query(models.Department).all()}
+        kitchen = [d for name, d in depts.items() if name != "Бар"]
+        bar = depts.get("Бар")
+        products_without_dept = (
+            db.query(models.Product)
+            .outerjoin(models.product_departments)
+            .filter(models.product_departments.c.product_id.is_(None))
+            .options(joinedload(models.Product.category))
+            .all()
+        )
+        linked = 0
+        for p in products_without_dept:
+            if p.category.name == "Бар" and bar:
+                p.departments = [bar]
+            elif kitchen:
+                p.departments = kitchen
+            linked += 1
+        if linked:
+            db.commit()
+            print(f"Linked {linked} product(s) to departments.")
     finally:
         db.close()
 

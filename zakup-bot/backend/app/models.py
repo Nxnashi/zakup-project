@@ -1,7 +1,7 @@
 import enum
 import datetime
 from sqlalchemy import (
-    Column, Integer, String, ForeignKey, DateTime, Enum, Float, Text
+    Column, Integer, String, ForeignKey, DateTime, Enum, Float, Text, Table
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -11,7 +11,7 @@ class RoleEnum(str, enum.Enum):
     cook = "cook"
     chef = "chef"          # шеф / су-шеф — согласующий, видит все цеха
     purchaser = "purchaser"
-    admin = "admin"         # управляет пользователями и ролями
+    admin = "admin"         # управляет пользователями, ролями и номенклатурой
 
 
 class OrderStatus(str, enum.Enum):
@@ -21,9 +21,8 @@ class OrderStatus(str, enum.Enum):
 
 
 class ItemPurchaseStatus(str, enum.Enum):
-    awaiting = "awaiting"   # заявка ещё не утверждена / утверждена, но не в закупке
-    ordered = "ordered"
-    received = "received"
+    awaiting = "awaiting"
+    received = "received"   # «Приобретено» — единственный рабочий статус закупки
 
 
 # native_enum=False хранит значения как обычный VARCHAR, а не как жёсткий
@@ -31,6 +30,18 @@ class ItemPurchaseStatus(str, enum.Enum):
 # правкой Python-кода, без ALTER TYPE на проде.
 def PyEnum(enum_cls):
     return Enum(enum_cls, native_enum=False, validate_strings=True)
+
+
+# ТМЦ видна только тем цехам, с которыми явно связана (многие-ко-многим) —
+# так один товар (например «Лимон») может существовать двумя отдельными
+# позициями номенклатуры: одна видна кухне, другая — бару, и они не путаются
+# при заказе, но у закупщика сводятся в одну строку по названию.
+product_departments = Table(
+    "product_departments",
+    Base.metadata,
+    Column("product_id", Integer, ForeignKey("products.id"), primary_key=True),
+    Column("department_id", Integer, ForeignKey("departments.id"), primary_key=True),
+)
 
 
 class Department(Base):
@@ -71,6 +82,7 @@ class Product(Base):
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
 
     category = relationship("Category", back_populates="products")
+    departments = relationship("Department", secondary=product_departments)
 
 
 class Order(Base):
@@ -89,7 +101,10 @@ class Order(Base):
     department = relationship("Department", back_populates="orders")
     author = relationship("User", foreign_keys=[author_id])
     decided_by = relationship("User", foreign_keys=[decided_by_id])
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    items = relationship(
+        "OrderItem", back_populates="order", cascade="all, delete-orphan",
+        order_by="OrderItem.position",
+    )
 
 
 class OrderItem(Base):
@@ -99,7 +114,16 @@ class OrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     qty = Column(Float, nullable=False)
     comment = Column(Text, nullable=True)
+    position = Column(Integer, nullable=False, default=0)  # порядок как добавлял повар, не алфавит
     purchase_status = Column(PyEnum(ItemPurchaseStatus), default=ItemPurchaseStatus.awaiting, nullable=False)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+
+
+class Setting(Base):
+    """Единая таблица настроек ключ-значение — на первое время только
+    дедлайн редактирования заявки, но можно расширять без миграций."""
+    __tablename__ = "settings"
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=True)

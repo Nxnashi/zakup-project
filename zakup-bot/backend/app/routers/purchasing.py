@@ -11,7 +11,7 @@ from ..database import get_db
 
 router = APIRouter()
 
-STATUS_LABELS = {"awaiting": "Ожидает", "ordered": "Заказано", "received": "Получено"}
+STATUS_LABELS = {"awaiting": "Ожидает", "received": "Приобретено"}
 
 
 def _approved_items_query(db: Session):
@@ -27,34 +27,37 @@ def _approved_items_query(db: Session):
 
 
 def _consolidated_lines(db: Session):
+    """Группируем не по ID товара, а по названию (без регистра) — так одна и
+    та же позиция, заведённая отдельно для разных цехов (например «Лимон»
+    для кухни и «Лимон» для бара), сводится у закупщика в одну строку."""
     items = _approved_items_query(db).all()
     grouped = defaultdict(lambda: {"total_qty": 0.0, "by_department": defaultdict(float),
-                                    "item_ids": [], "statuses": set(), "product": None})
+                                    "item_ids": [], "statuses": set(),
+                                    "unit": None, "supplier": None})
     for it in items:
-        g = grouped[it.product_id]
-        g["product"] = it.product
+        key = it.product.name.strip().lower()
+        g = grouped[key]
+        g["name"] = it.product.name.strip()
+        g["unit"] = g["unit"] or it.product.unit
+        g["supplier"] = g["supplier"] or it.product.default_supplier
         g["total_qty"] += it.qty
         g["by_department"][it.order.department.name] += it.qty
         g["item_ids"].append(it.id)
         g["statuses"].add(it.purchase_status.value)
 
     result = []
-    for pid, g in grouped.items():
-        statuses = g["statuses"]
-        if statuses == {"received"}:
-            overall = "received"
-        elif statuses == {"ordered"} or statuses == {"ordered", "received"}:
-            overall = "ordered"
-        else:
-            overall = "awaiting"
+    for key, g in grouped.items():
+        overall = "received" if g["statuses"] == {"received"} else "awaiting"
         result.append(schemas.ConsolidatedLine(
-            product=g["product"],
+            name=g["name"],
+            unit=g["unit"],
+            default_supplier=g["supplier"],
             total_qty=round(g["total_qty"], 3),
             by_department=dict(g["by_department"]),
             purchase_status=overall,
             item_ids=g["item_ids"],
         ))
-    result.sort(key=lambda x: (x.product.category.name, x.product.name))
+    result.sort(key=lambda x: x.name)
     return result
 
 
@@ -65,13 +68,14 @@ def consolidated(db: Session = Depends(get_db)):
 
 @router.get("/by-department", response_model=List[schemas.OrderOut])
 def by_department(db: Session = Depends(get_db)):
-    from .orders import _order_query
-    return (
+    from .orders import _order_query, _serialize
+    orders = (
         _order_query(db)
         .filter(models.Order.status == models.OrderStatus.approved)
         .order_by(models.Order.department_id, models.Order.created_at.desc())
         .all()
     )
+    return [_serialize(o, db) for o in orders]
 
 
 @router.get("/export-excel")
@@ -84,7 +88,8 @@ def export_excel(db: Session = Depends(get_db)):
     ws = wb.active
     ws.title = "Закупка"
 
-    headers = ["Категория", "Поставщик", "Наименование", "Кол-во", "Ед.изм", "По цехам", "Статус"]
+    # Поставщик/склад — последней колонкой, чтобы не мешал основному списку
+    headers = ["Наименование", "Кол-во", "Ед.изм", "По цехам", "Статус", "Поставщик"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True)
@@ -92,17 +97,16 @@ def export_excel(db: Session = Depends(get_db)):
     for line in lines:
         by_dept = ", ".join(f"{dep} {qty}" for dep, qty in line.by_department.items())
         ws.append([
-            line.product.category.name,
-            line.product.default_supplier or "",
-            line.product.name,
+            line.name,
             line.total_qty,
-            line.product.unit or "",
+            line.unit or "",
             by_dept,
             STATUS_LABELS.get(line.purchase_status, line.purchase_status),
+            line.default_supplier or "",
         ])
 
-    widths = [20, 14, 34, 8, 8, 30, 12]
-    for col, w in zip("ABCDEFG", widths):
+    widths = [34, 8, 8, 30, 12, 14]
+    for col, w in zip("ABCDEF", widths):
         ws.column_dimensions[col].width = w
 
     buf = BytesIO()
@@ -117,17 +121,16 @@ def export_excel(db: Session = Depends(get_db)):
     )
 
 
-class MarkStatusIn(BaseModel):
-    product_id: int
-    status: str  # ordered | received
+class MarkAcquiredIn(BaseModel):
+    item_ids: List[int]
 
 
-@router.post("/mark-status")
-def mark_status(payload: MarkStatusIn, db: Session = Depends(get_db)):
-    if payload.status not in ("ordered", "received"):
-        raise HTTPException(400, "Некорректный статус")
-    items = _approved_items_query(db).filter(models.OrderItem.product_id == payload.product_id).all()
+@router.post("/mark-acquired")
+def mark_acquired(payload: MarkAcquiredIn, db: Session = Depends(get_db)):
+    if not payload.item_ids:
+        raise HTTPException(400, "Пустой список позиций")
+    items = db.query(models.OrderItem).filter(models.OrderItem.id.in_(payload.item_ids)).all()
     for it in items:
-        it.purchase_status = payload.status
+        it.purchase_status = models.ItemPurchaseStatus.received
     db.commit()
     return {"updated": len(items)}

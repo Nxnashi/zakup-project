@@ -119,6 +119,7 @@ export default function ChefApproval({ user }) {
                   <span style={{ flex: 1, fontSize: 14 }}>{i.product.name}</span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="0.1"
                     defaultValue={i.qty}

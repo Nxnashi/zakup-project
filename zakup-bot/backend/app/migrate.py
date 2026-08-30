@@ -15,6 +15,9 @@ MIGRATIONS = [
     "ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(20) USING role::text",
     "ALTER TABLE orders ALTER COLUMN status TYPE VARCHAR(20) USING status::text",
     "ALTER TABLE order_items ALTER COLUMN purchase_status TYPE VARCHAR(20) USING purchase_status::text",
+    "ALTER TABLE order_items ADD COLUMN IF NOT EXISTS position INTEGER NOT NULL DEFAULT 0",
+    # статус "ordered" убрали (осталась одна кнопка "Приобретено" = received)
+    "UPDATE order_items SET purchase_status = 'received' WHERE purchase_status = 'ordered'",
 ]
 
 

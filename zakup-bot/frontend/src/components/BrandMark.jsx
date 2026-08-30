@@ -1,10 +1,14 @@
 import React from "react";
+import pbMark from "../assets/pb-mark.png";
 
 export default function BrandMark({ size = 26 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M8 10 L30 10 L30 28 L8 36 Z" fill="var(--sage)" opacity="0.6" />
-      <path d="M17 28 L30 24 L30 38 L17 44 Z" fill="var(--accent-bright)" />
-    </svg>
+    <div style={{ width: size, height: size, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <img
+        src={pbMark}
+        alt="PB"
+        style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(76,154,124,0.35))" }}
+      />
+    </div>
   );
 }

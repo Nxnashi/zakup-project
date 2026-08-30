@@ -15,6 +15,7 @@ class UserOut(BaseModel):
     id: int
     full_name: str
     telegram_username: str
+    telegram_id: Optional[str] = None
     role: RoleEnum
     department: Optional[DepartmentOut] = None
     class Config:
@@ -48,8 +49,26 @@ class ProductOut(BaseModel):
     unit: Optional[str] = None
     default_supplier: Optional[str] = None
     category: CategoryOut
+    departments: List[DepartmentOut] = []
     class Config:
         from_attributes = True
+
+
+class ProductCreate(BaseModel):
+    name: str
+    unit: Optional[str] = None
+    default_supplier: Optional[str] = None
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None  # если новой категории ещё нет — создаём по имени
+    department_ids: List[int] = []       # каким цехам видна эта позиция
+
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    unit: Optional[str] = None
+    default_supplier: Optional[str] = None
+    category_id: Optional[int] = None
+    department_ids: Optional[List[int]] = None
 
 
 class OrderItemIn(BaseModel):
@@ -70,6 +89,13 @@ class OrderDecision(BaseModel):
     decided_by_id: int
     decision_comment: Optional[str] = None
     items: Optional[List[OrderItemIn]] = None  # если шеф корректирует количество перед утверждением
+
+
+class OrderEdit(BaseModel):
+    author_id: int  # для проверки, что редактирует именно автор заявки
+    urgent: Optional[bool] = None
+    comment: Optional[str] = None
+    items: List[OrderItemIn]
 
 
 class OrderItemOut(BaseModel):
@@ -93,13 +119,28 @@ class OrderOut(BaseModel):
     created_at: datetime.datetime
     decided_at: Optional[datetime.datetime] = None
     items: List[OrderItemOut]
+    editable: bool = True  # можно ли ещё редактировать (до дедлайна и pending)
     class Config:
         from_attributes = True
 
 
 class ConsolidatedLine(BaseModel):
-    product: ProductOut
+    name: str
+    unit: Optional[str] = None
+    default_supplier: Optional[str] = None
     total_qty: float
     by_department: dict
     purchase_status: str
     item_ids: List[int]
+
+
+class SettingsOut(BaseModel):
+    order_edit_cutoff: Optional[str] = None  # "HH:MM" по Ташкенту, пусто = без дедлайна
+
+
+class SettingsUpdate(BaseModel):
+    order_edit_cutoff: Optional[str] = None
+
+
+class TelegramAuthIn(BaseModel):
+    init_data: str

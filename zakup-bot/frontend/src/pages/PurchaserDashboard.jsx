@@ -2,17 +2,12 @@ import React, { useEffect, useState } from "react";
 import { api } from "../api/client";
 import SegmentedTabs from "../components/SegmentedTabs.jsx";
 
-const purchaseStatusMeta = {
-  awaiting: { label: "Ожидает", cls: "badge-warning" },
-  ordered: { label: "Заказано", cls: "badge-neutral" },
-  received: { label: "Получено", cls: "badge-success" },
-};
-
 export default function PurchaserDashboard() {
   const [tab, setTab] = useState("consolidated");
   const [consolidated, setConsolidated] = useState([]);
   const [byDept, setByDept] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busyKey, setBusyKey] = useState(null);
 
   function load() {
     setLoading(true);
@@ -25,9 +20,16 @@ export default function PurchaserDashboard() {
 
   useEffect(load, []);
 
-  async function markStatus(productId, status) {
-    await api.markStatus(productId, status);
-    load();
+  async function markAcquired(line) {
+    setBusyKey(line.name);
+    try {
+      await api.markAcquired(line.item_ids);
+      load();
+    } catch (e) {
+      alert("Ошибка: " + e.message);
+    } finally {
+      setBusyKey(null);
+    }
   }
 
   if (loading) {
@@ -47,11 +49,14 @@ export default function PurchaserDashboard() {
 
   return (
     <div className="fade-in">
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <a href={api.exportExcelUrl()} className="btn" style={{ fontSize: 13, padding: "9px 13px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <a href={api.exportExcelUrl()} className="btn" style={{ flex: 1, fontSize: 13, padding: "9px 13px", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           ⬇ Скачать Excel
         </a>
       </div>
+      <p style={{ fontSize: 11.5, color: "var(--ink-faint)", marginTop: -6, marginBottom: 12, lineHeight: 1.4 }}>
+        На телефоне надёжнее команда <strong style={{ color: "var(--ink-soft)" }}>/report</strong> прямо боту — пришлёт файл в чат.
+      </p>
 
       <SegmentedTabs
         tabs={[
@@ -70,47 +75,43 @@ export default function PurchaserDashboard() {
                 <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: 0 }}>Утверждённых заявок пока нет.</p>
               </div>
             )}
-            {consolidated.map((line) => {
-              const meta = purchaseStatusMeta[line.purchase_status] || purchaseStatusMeta.awaiting;
-              return (
-                <div key={line.product.id} className="card" style={{ padding: "11px 13px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700 }}>{line.product.name}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700 }}>
-                      {line.total_qty} {line.product.unit}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 10px" }}>
-                    {Object.entries(line.by_department).map(([dep, qty]) => `${dep} ${qty}`).join(" · ")}
-                    {line.product.default_supplier ? ` · Пост.: ${line.product.default_supplier}` : ""}
-                  </p>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span className={`badge ${meta.cls}`}>
-                      <span className="badge-dot" />
-                      {meta.label}
-                    </span>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        onClick={() => markStatus(line.product.id, "ordered")}
-                        disabled={line.purchase_status !== "awaiting"}
-                        className="btn"
-                        style={{ fontSize: 12, padding: "7px 11px" }}
-                      >
-                        Заказано
-                      </button>
-                      <button
-                        onClick={() => markStatus(line.product.id, "received")}
-                        disabled={line.purchase_status === "received"}
-                        className="btn"
-                        style={{ fontSize: 12, padding: "7px 11px" }}
-                      >
-                        Получено
-                      </button>
-                    </div>
-                  </div>
+            {consolidated.map((line) => (
+              <div key={line.name} className="card" style={{ padding: "11px 13px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{line.name}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>
+                    {line.total_qty} {line.unit}
+                  </span>
                 </div>
-              );
-            })}
+                <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 10px" }}>
+                  {Object.entries(line.by_department).map(([dep, qty]) => `${dep} ${qty}`).join(" · ")}
+                  {line.default_supplier ? ` · Пост.: ${line.default_supplier}` : ""}
+                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  {line.purchase_status === "received" ? (
+                    <span className="badge badge-success">
+                      <span className="badge-dot" />
+                      Приобретено
+                    </span>
+                  ) : (
+                    <span className="badge badge-warning">
+                      <span className="badge-dot" />
+                      Ожидает
+                    </span>
+                  )}
+                  {line.purchase_status !== "received" && (
+                    <button
+                      onClick={() => markAcquired(line)}
+                      disabled={busyKey === line.name}
+                      className="btn btn-primary"
+                      style={{ fontSize: 12.5, padding: "8px 14px" }}
+                    >
+                      Приобретено
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
