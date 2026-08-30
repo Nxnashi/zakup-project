@@ -4,6 +4,7 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import SegmentedTabs from "../components/SegmentedTabs.jsx";
 import OrderComposer from "../components/OrderComposer.jsx";
 import OrderHistoryList from "../components/OrderHistoryList.jsx";
+import { formatDateTime } from "../utils/datetime.js";
 
 export default function ChefApproval({ user }) {
   const [tab, setTab] = useState("queue");
@@ -158,7 +159,7 @@ function ApprovalQueue({ user }) {
               )}
             </div>
             <p style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 10 }}>
-              {new Date(o.created_at).toLocaleString("ru-RU")}
+              {formatDateTime(o.created_at)}
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>

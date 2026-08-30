@@ -61,6 +61,8 @@ class User(Base):
     telegram_id = Column(String, unique=True, nullable=True)  # заполнится при первом входе через бота
     role = Column(PyEnum(RoleEnum), nullable=False)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    is_active = Column(Integer, default=1, nullable=False)  # 0/1 — отключён вместо удаления,
+    # чтобы не терять историю (кто подал/утвердил заявку)
 
     department = relationship("Department", back_populates="users")
 

@@ -15,7 +15,11 @@ async function request(path, options = {}) {
 
 export const api = {
   departments: () => request("/departments"),
-  users: (role) => request(`/users${role ? `?role=${role}` : ""}`),
+  users: (params = {}) => {
+    const opts = typeof params === "string" ? { role: params } : params;
+    const qs = new URLSearchParams(opts).toString();
+    return request(`/users${qs ? `?${qs}` : ""}`);
+  },
   categories: () => request("/categories"),
   products: (params = {}) => {
     const qs = new URLSearchParams(params).toString();

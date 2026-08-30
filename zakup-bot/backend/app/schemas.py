@@ -18,6 +18,7 @@ class UserOut(BaseModel):
     telegram_id: Optional[str] = None
     role: RoleEnum
     department: Optional[DepartmentOut] = None
+    is_active: bool = True
     class Config:
         from_attributes = True
 
@@ -34,6 +35,7 @@ class UserUpdate(BaseModel):
     telegram_username: Optional[str] = None
     role: Optional[RoleEnum] = None
     department_id: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
 class CategoryOut(BaseModel):

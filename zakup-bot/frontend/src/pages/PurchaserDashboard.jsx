@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api/client";
 import SegmentedTabs from "../components/SegmentedTabs.jsx";
+import { formatDate } from "../utils/datetime.js";
 
 export default function PurchaserDashboard() {
   const [tab, setTab] = useState("consolidated");
@@ -131,7 +132,7 @@ export default function PurchaserDashboard() {
                   {orders.map((o) => (
                     <div key={o.id} className="card" style={{ padding: "9px 13px" }}>
                       <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 4px" }}>
-                        {o.author.full_name} · {new Date(o.created_at).toLocaleDateString("ru-RU")}
+                        {o.author.full_name} · {formatDate(o.created_at)}
                       </p>
                       {o.items.map((i) => (
                         <div key={i.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>

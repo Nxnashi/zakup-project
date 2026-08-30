@@ -25,12 +25,15 @@ def list_departments(db: Session = Depends(get_db)):
 
 
 @router.get("/users", response_model=List[schemas.UserOut])
-def list_users(role: Optional[str] = None, telegram_id: Optional[str] = None, db: Session = Depends(get_db)):
+def list_users(role: Optional[str] = None, telegram_id: Optional[str] = None,
+                include_inactive: bool = False, db: Session = Depends(get_db)):
     q = db.query(models.User).options(joinedload(models.User.department))
     if role:
         q = q.filter(models.User.role == role)
     if telegram_id:
         q = q.filter(models.User.telegram_id == telegram_id)
+    if not include_inactive:
+        q = q.filter(models.User.is_active == 1)
     return q.order_by(models.User.role, models.User.full_name).all()
 
 
@@ -70,9 +73,21 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(404, "Пользователь не найден")
+    # Жёсткое удаление невозможно, если человек фигурирует в истории заявок
+    # (подавал их или утверждал) — база на это не даст пойти, да это и не
+    # нужно: отключаем доступ, история остаётся как есть.
+    has_orders = (
+        db.query(models.Order)
+        .filter((models.Order.author_id == user_id) | (models.Order.decided_by_id == user_id))
+        .first()
+    )
+    if has_orders:
+        user.is_active = 0
+        db.commit()
+        return {"deleted": False, "deactivated": True}
     db.delete(user)
     db.commit()
-    return {"deleted": True}
+    return {"deleted": True, "deactivated": False}
 
 
 class LinkTelegramIn(BaseModel):
@@ -141,6 +156,8 @@ def auth_telegram(payload: schemas.TelegramAuthIn, db: Session = Depends(get_db)
 
     if not user:
         raise HTTPException(403, "Доступ не предоставлен — обратитесь к администратору")
+    if not user.is_active:
+        raise HTTPException(403, "Доступ отключён — обратитесь к администратору")
 
     return user
 

@@ -43,7 +43,7 @@ function UsersSection() {
 
   function load() {
     setLoading(true);
-    Promise.all([api.users(), api.departments()]).then(([u, d]) => {
+    Promise.all([api.users({ include_inactive: true }), api.departments()]).then(([u, d]) => {
       setUsers(u);
       setDepartments(d);
       setLoading(false);
@@ -85,7 +85,19 @@ function UsersSection() {
   async function remove(id, name) {
     if (!window.confirm(`Убрать доступ у «${name}»?`)) return;
     try {
-      await api.deleteUser(id);
+      const res = await api.deleteUser(id);
+      if (res?.deactivated) {
+        alert(`«${name}» уже фигурирует в истории заявок, поэтому удалить нельзя без потери данных — доступ просто отключён. Историю заявок это не тронуло.`);
+      }
+      load();
+    } catch (e) {
+      alert("Ошибка: " + e.message);
+    }
+  }
+
+  async function reactivate(id) {
+    try {
+      await api.updateUser(id, { is_active: true });
       load();
     } catch (e) {
       alert("Ошибка: " + e.message);
@@ -151,6 +163,7 @@ function UsersSection() {
             onCancel={() => setEditingId(null)}
             onSave={(patch) => saveEdit(u.id, patch)}
             onDelete={() => remove(u.id, u.full_name)}
+            onReactivate={() => reactivate(u.id)}
           />
         ))}
       </div>
@@ -158,23 +171,32 @@ function UsersSection() {
   );
 }
 
-function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelete }) {
+function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelete, onReactivate }) {
   const [role, setRole] = useState(user.role);
   const [departmentId, setDepartmentId] = useState(user.department ? String(user.department.id) : "");
 
   if (!editing) {
     return (
-      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 13px" }}>
+      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 13px", opacity: user.is_active ? 1 : 0.6 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{user.full_name}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+            {user.full_name}
+            {!user.is_active && <span className="badge badge-neutral" style={{ fontSize: 10.5 }}>отключён</span>}
+          </div>
           <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
             @{user.telegram_username} · {roleLabels[user.role]}
             {user.department ? ` · ${user.department.name}` : ""}
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={onEdit} className="btn" style={{ fontSize: 12, padding: "7px 11px" }}>Изменить</button>
-          <button onClick={onDelete} className="btn btn-danger" style={{ fontSize: 12, padding: "7px 11px" }}>Убрать</button>
+          {user.is_active ? (
+            <>
+              <button onClick={onEdit} className="btn" style={{ fontSize: 12, padding: "7px 11px" }}>Изменить</button>
+              <button onClick={onDelete} className="btn btn-danger" style={{ fontSize: 12, padding: "7px 11px" }}>Убрать</button>
+            </>
+          ) : (
+            <button onClick={onReactivate} className="btn btn-primary" style={{ fontSize: 12, padding: "7px 11px" }}>Восстановить</button>
+          )}
         </div>
       </div>
     );

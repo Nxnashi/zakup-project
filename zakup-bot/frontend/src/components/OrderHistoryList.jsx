@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api/client";
 import StatusBadge from "./StatusBadge.jsx";
+import { formatDateTime } from "../utils/datetime.js";
 
 export default function OrderHistoryList({ user, refreshKey }) {
   const [history, setHistory] = useState([]);
@@ -78,7 +79,7 @@ function HistoryOrderCard({ order, user, onChanged }) {
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
         <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
           {order.department?.name ? `${order.department.name} · ` : ""}
-          {new Date(order.created_at).toLocaleString("ru-RU")}
+          {formatDateTime(order.created_at)}
         </span>
         <StatusBadge status={order.status} />
       </div>

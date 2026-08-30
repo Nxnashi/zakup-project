@@ -18,6 +18,9 @@ MIGRATIONS = [
     "ALTER TABLE order_items ADD COLUMN IF NOT EXISTS position INTEGER NOT NULL DEFAULT 0",
     # статус "ordered" убрали (осталась одна кнопка "Приобретено" = received)
     "UPDATE order_items SET purchase_status = 'received' WHERE purchase_status = 'ordered'",
+    # "удаление" сотрудника теперь мягкое (is_active=0), чтобы не ломать
+    # историю заявок, где он фигурирует как автор/утвердивший
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active INTEGER NOT NULL DEFAULT 1",
 ]
 
 

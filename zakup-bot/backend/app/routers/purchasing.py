@@ -1,6 +1,7 @@
 from collections import defaultdict
 from io import BytesIO
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -11,6 +12,7 @@ from ..database import get_db
 
 router = APIRouter()
 
+TZ = ZoneInfo("Asia/Tashkent")
 STATUS_LABELS = {"awaiting": "Ожидает", "received": "Приобретено"}
 
 
@@ -113,7 +115,7 @@ def export_excel(db: Session = Depends(get_db)):
     wb.save(buf)
     buf.seek(0)
 
-    filename = f"zakup-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    filename = f"zakup-{datetime.now(TZ).strftime('%Y-%m-%d')}.xlsx"
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
