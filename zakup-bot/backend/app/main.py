@@ -4,6 +4,7 @@ from .database import Base, engine
 from .routers import catalog, orders, purchasing
 from . import seed as seed_module
 from . import migrate as migrate_module
+from . import fixups as fixups_module
 
 Base.metadata.create_all(bind=engine)
 
@@ -26,6 +27,7 @@ app.include_router(purchasing.router, prefix="/purchasing", tags=["purchasing"])
 def on_startup():
     migrate_module.migrate_enum_columns_to_varchar()
     seed_module.seed()
+    fixups_module.apply_unit_category_fixes()
 
 
 @app.get("/health")
