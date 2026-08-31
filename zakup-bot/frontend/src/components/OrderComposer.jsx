@@ -1,6 +1,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 
+// Выбранные позиции поднимаем наверх списка (последняя выбранная — первой),
+// чтобы не терять их в длинном списке и не листать обратно вниз, проверяя,
+// что уже добавлено.
+function sortedProducts(products, cart) {
+  const cartOrder = new Map(cart.map((item, idx) => [item.product.id, idx]));
+  return [...products].sort((a, b) => {
+    const aIn = cartOrder.has(a.id);
+    const bIn = cartOrder.has(b.id);
+    if (aIn && bIn) return cartOrder.get(b.id) - cartOrder.get(a.id); // последний добавленный — первым
+    if (aIn) return -1;
+    if (bIn) return 1;
+    return 0;
+  });
+}
+
 export default function OrderComposer({ user, fixedDepartmentId, onSubmitted }) {
   const [departments, setDepartments] = useState([]);
   const [departmentId, setDepartmentId] = useState(fixedDepartmentId || "");
@@ -146,7 +161,7 @@ export default function OrderComposer({ user, fixedDepartmentId, onSubmitted }) 
             className="scroll-area"
             style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}
           >
-            {products.map((p) => {
+            {sortedProducts(products, cart).map((p) => {
               const added = inCart(p.id);
               return (
                 <div
@@ -163,8 +178,18 @@ export default function OrderComposer({ user, fixedDepartmentId, onSubmitted }) 
                     animation: justAdded === p.id ? "pop 320ms var(--ease-snap)" : "none",
                   }}
                 >
-                  <span style={{ fontSize: 14 }}>{p.name}</span>
-                  <span style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 600 }}>{p.unit}</span>
+                  <span style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 7 }}>
+                    {added && <span style={{ color: "var(--accent-bright)" }}>✓</span>}
+                    {p.name}
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {p.stock_qty != null && (
+                      <span className="badge badge-neutral" style={{ fontSize: 10.5 }}>
+                        остаток {p.stock_qty}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 600 }}>{p.unit}</span>
+                  </span>
                 </div>
               );
             })}
@@ -179,7 +204,14 @@ export default function OrderComposer({ user, fixedDepartmentId, onSubmitted }) 
               <div className="stagger-list" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {cart.map(({ product, qty }) => (
                   <div key={product.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ flex: 1, fontSize: 14 }}>{product.name}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14 }}>{product.name}</div>
+                      {product.stock_qty != null && (
+                        <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                          остаток на складе: {product.stock_qty} {product.unit}
+                        </div>
+                      )}
+                    </div>
                     <input
                       type="number"
                       inputMode="decimal"

@@ -21,6 +21,8 @@ MIGRATIONS = [
     # "удаление" сотрудника теперь мягкое (is_active=0), чтобы не ломать
     # историю заявок, где он фигурирует как автор/утвердивший
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active INTEGER NOT NULL DEFAULT 1",
+    # остаток на складе — задел под будущую интеграцию, пока вносится вручную
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_qty DOUBLE PRECISION",
 ]
 
 

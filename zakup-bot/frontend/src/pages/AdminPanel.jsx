@@ -245,7 +245,7 @@ function ProductsSection() {
   const [form, setForm] = useState(emptyForm());
 
   function emptyForm() {
-    return { name: "", unit: "кг", default_supplier: "", category_id: "", category_name: "", department_ids: [] };
+    return { name: "", unit: "кг", default_supplier: "", stock_qty: "", category_id: "", category_name: "", department_ids: [] };
   }
 
   function load() {
@@ -278,6 +278,7 @@ function ProductsSection() {
         name: form.name.trim(),
         unit: form.unit || null,
         default_supplier: form.default_supplier || null,
+        stock_qty: form.stock_qty !== "" ? Number(form.stock_qty) : null,
         category_id: form.category_id ? Number(form.category_id) : null,
         category_name: form.category_id ? null : form.category_name.trim(),
         department_ids: form.department_ids,
@@ -360,6 +361,19 @@ function ProductsSection() {
               style={{ flex: 1 }}
             />
           </div>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            placeholder="Остаток на складе (необязательно)"
+            value={form.stock_qty}
+            onChange={(e) => setForm({ ...form, stock_qty: e.target.value })}
+            className="input"
+            style={{ marginBottom: 8 }}
+          />
+          <p style={{ fontSize: 11.5, color: "var(--ink-faint)", margin: "-4px 0 8px", lineHeight: 1.4 }}>
+            Задел под будущую интеграцию со складом — пока обновляется вручную. Бармен/повар увидит эту цифру при сборе заявки.
+          </p>
           <select
             value={form.category_id}
             onChange={(e) => setForm({ ...form, category_id: e.target.value, category_name: "" })}
@@ -423,6 +437,7 @@ function ProductRow({ product, categories, departments, editing, onEdit, onCance
   const [name, setName] = useState(product.name);
   const [unit, setUnit] = useState(product.unit || "");
   const [supplier, setSupplier] = useState(product.default_supplier || "");
+  const [stockQty, setStockQty] = useState(product.stock_qty ?? "");
   const [categoryId, setCategoryId] = useState(String(product.category.id));
   const [deptIds, setDeptIds] = useState(product.departments.map((d) => d.id));
 
@@ -439,6 +454,7 @@ function ProductRow({ product, categories, departments, editing, onEdit, onCance
             <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>
               {product.category.name} · {product.unit || "—"}
               {product.default_supplier ? ` · ${product.default_supplier}` : ""}
+              {product.stock_qty != null ? ` · остаток ${product.stock_qty}` : ""}
             </div>
             <div style={{ fontSize: 11.5, color: "var(--ink-faint)", marginTop: 3 }}>
               {product.departments.length ? product.departments.map((d) => d.name).join(", ") : "не привязано ни к одному цеху"}
@@ -460,6 +476,16 @@ function ProductRow({ product, categories, departments, editing, onEdit, onCance
         <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Ед.изм" className="input" style={{ flex: 1 }} />
         <input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Поставщик" className="input" style={{ flex: 1 }} />
       </div>
+      <input
+        type="number"
+        inputMode="decimal"
+        step="0.1"
+        value={stockQty}
+        onChange={(e) => setStockQty(e.target.value)}
+        placeholder="Остаток на складе"
+        className="input"
+        style={{ marginBottom: 8 }}
+      />
       <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="input" style={{ marginBottom: 8 }}>
         {categories.map((c) => (
           <option key={c.id} value={c.id}>{c.name}</option>
@@ -476,7 +502,11 @@ function ProductRow({ product, categories, departments, editing, onEdit, onCance
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={onCancel} className="btn" style={{ flex: 1, padding: 9 }}>Отмена</button>
         <button
-          onClick={() => onSave({ name, unit, default_supplier: supplier, category_id: Number(categoryId), department_ids: deptIds })}
+          onClick={() => onSave({
+            name, unit, default_supplier: supplier,
+            stock_qty: stockQty !== "" ? Number(stockQty) : null,
+            category_id: Number(categoryId), department_ids: deptIds,
+          })}
           className="btn btn-primary"
           style={{ flex: 1, padding: 9 }}
         >

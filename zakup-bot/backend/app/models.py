@@ -82,6 +82,10 @@ class Product(Base):
     unit = Column(String, nullable=True)
     default_supplier = Column(String, nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
+    # Остаток на складе — задел под будущую интеграцию со складским учётом.
+    # Пока админ вносит и обновляет число вручную через панель; null = не
+    # отслеживается для этой позиции.
+    stock_qty = Column(Float, nullable=True)
 
     category = relationship("Category", back_populates="products")
     departments = relationship("Department", secondary=product_departments)

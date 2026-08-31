@@ -210,6 +210,7 @@ def create_product(payload: schemas.ProductCreate, db: Session = Depends(get_db)
         name=payload.name.strip(),
         unit=payload.unit,
         default_supplier=payload.default_supplier,
+        stock_qty=payload.stock_qty,
         category_id=cat.id,
     )
     if payload.department_ids:

@@ -50,6 +50,7 @@ class ProductOut(BaseModel):
     name: str
     unit: Optional[str] = None
     default_supplier: Optional[str] = None
+    stock_qty: Optional[float] = None
     category: CategoryOut
     departments: List[DepartmentOut] = []
     class Config:
@@ -60,6 +61,7 @@ class ProductCreate(BaseModel):
     name: str
     unit: Optional[str] = None
     default_supplier: Optional[str] = None
+    stock_qty: Optional[float] = None
     category_id: Optional[int] = None
     category_name: Optional[str] = None  # если новой категории ещё нет — создаём по имени
     department_ids: List[int] = []       # каким цехам видна эта позиция
@@ -68,6 +70,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     unit: Optional[str] = None
+    stock_qty: Optional[float] = None
     default_supplier: Optional[str] = None
     category_id: Optional[int] = None
     department_ids: Optional[List[int]] = None
