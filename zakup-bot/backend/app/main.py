@@ -28,6 +28,7 @@ def on_startup():
     migrate_module.migrate_enum_columns_to_varchar()
     seed_module.seed()
     fixups_module.apply_unit_category_fixes()
+    fixups_module.fix_admin_display_name()
 
 
 @app.get("/health")

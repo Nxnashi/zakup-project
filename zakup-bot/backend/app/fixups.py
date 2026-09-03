@@ -53,3 +53,27 @@ def apply_unit_category_fixes():
             print(f"Fixed unit/category for {updated} product(s).")
     finally:
         db.close()
+
+
+def fix_admin_display_name():
+    """Разовая правка: живой аккаунт (username pe2pac) был тестово назван
+    "Гандон" и затем отключён при попытке удаления. Это тот же Telegram-
+    аккаунт, что нужен владельцу для входа — переименовываем и включаем
+    обратно, без ручных действий в интерфейсе."""
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.telegram_username == "pe2pac").first()
+        if not user:
+            return
+        changed = False
+        if user.full_name == "Гандон":
+            user.full_name = "Администратор"
+            changed = True
+        if not user.is_active:
+            user.is_active = 1
+            changed = True
+        if changed:
+            db.commit()
+            print("Fixed admin display name / reactivated pe2pac.")
+    finally:
+        db.close()

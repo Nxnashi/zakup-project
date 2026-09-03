@@ -172,6 +172,7 @@ function UsersSection() {
 }
 
 function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelete, onReactivate }) {
+  const [fullName, setFullName] = useState(user.full_name);
   const [role, setRole] = useState(user.role);
   const [departmentId, setDepartmentId] = useState(user.department ? String(user.department.id) : "");
 
@@ -204,7 +205,7 @@ function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelet
 
   return (
     <div className="card scale-in" style={{ padding: 14, borderColor: "var(--accent)" }}>
-      <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>{user.full_name}</p>
+      <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input" style={{ marginBottom: 8, fontWeight: 700 }} />
       <select value={role} onChange={(e) => setRole(e.target.value)} className="input" style={{ marginBottom: 8 }}>
         {Object.entries(roleLabels).map(([val, label]) => (
           <option key={val} value={val}>{label}</option>
@@ -221,7 +222,7 @@ function UserRow({ user, departments, editing, onEdit, onCancel, onSave, onDelet
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={onCancel} className="btn" style={{ flex: 1, padding: 9 }}>Отмена</button>
         <button
-          onClick={() => onSave({ role, department_id: role === "cook" && departmentId ? Number(departmentId) : null })}
+          onClick={() => onSave({ full_name: fullName, role, department_id: role === "cook" && departmentId ? Number(departmentId) : null })}
           className="btn btn-primary"
           style={{ flex: 1, padding: 9 }}
         >
